@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aegis.app.sample;
+package org.aegis.app.sample.s3;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.Iterables.contains;
@@ -51,49 +51,38 @@ import com.google.common.io.ByteSource;
 @SuppressWarnings("deprecation")
 public class blobsample1 {
 
-	public static final Map<String, ApiMetadata> allApis = Maps.uniqueIndex(
-			Apis.viewableAs(BlobStoreContext.class), Apis.idFunction());
+	public static final Map<String, ApiMetadata> allApis = Maps.uniqueIndex(Apis.viewableAs(BlobStoreContext.class), Apis.idFunction());
 
-	public static final Map<String, ProviderMetadata> appProviders = Maps
-			.uniqueIndex(Providers.viewableAs(BlobStoreContext.class),
-					Providers.idFunction());
+	public static final Map<String, ProviderMetadata> appProviders = Maps.uniqueIndex(Providers.viewableAs(BlobStoreContext.class), Providers.idFunction());
 
-	public static final Set<String> allKeys = ImmutableSet.copyOf(Iterables
-			.concat(appProviders.keySet(), allApis.keySet()));
+	public static final Set<String> allKeys = ImmutableSet.copyOf(Iterables.concat(appProviders.keySet(), allApis.keySet()));
 
 	public static int PARAMETERS = 4;
 	public static String INVALID_SYNTAX = "Invalid number of parameters. Syntax is: \"provider\" \"identity\" \"credential\" \"containerName\" ";
 
 	public static void main(String[] args) throws IOException {
-
 		if (args.length < PARAMETERS)
 			throw new IllegalArgumentException(INVALID_SYNTAX);
 
 		// Args
-
 		String provider = args[0];
 
 		// note that you can check if a provider is present ahead of time
-		checkArgument(contains(allKeys, provider),
-				"provider %s not in supported list: %s", provider, allKeys);
+		checkArgument(contains(allKeys, provider), "provider %s not in supported list: %s", provider, allKeys);
 
 		String identity = args[1];
 		String credential = args[2];
 		String containerName = args[3];
 
 		// Init
-		BlobStoreContext context = ContextBuilder.newBuilder(provider)
-				.credentials(identity, credential)
-				.buildView(BlobStoreContext.class);
+		BlobStoreContext context = ContextBuilder.newBuilder(provider).credentials(identity, credential).buildView(BlobStoreContext.class);
 
 		try {
-
 			// Create Container
 			BlobStore blobStore = context.getBlobStore();
 			blobStore.createContainerInLocation(null, containerName);
 			String blobName = "test";
-			ByteSource payload = ByteSource.wrap("testdata"
-					.getBytes(Charsets.UTF_8));
+			ByteSource payload = ByteSource.wrap("testdata".getBytes(Charsets.UTF_8));
 
 			// List Container Metadata
 			for (StorageMetadata resourceMd : blobStore.list()) {
@@ -103,8 +92,7 @@ public class blobsample1 {
 			}
 
 			// Add Blob
-			Blob blob = blobStore.blobBuilder(blobName).payload(payload)
-					.contentLength(payload.size()).build();
+			Blob blob = blobStore.blobBuilder(blobName).payload(payload).contentLength(payload.size()).build();
 			blobStore.putBlob(containerName, blob);
 
 			// Use Provider API
@@ -112,21 +100,19 @@ public class blobsample1 {
 				RestContext<?, ?> rest = context.unwrap();
 				Object object = null;
 				if (rest.getApi() instanceof S3Client) {
-					RestContext<S3Client, S3AsyncClient> providerContext = context
-							.unwrap();
-					object = providerContext.getApi().headObject(containerName,
-							blobName);
+					RestContext<S3Client, S3AsyncClient> providerContext = context.unwrap();
+					object = providerContext.getApi().headObject(containerName, blobName);
 				}
 				if (object != null) {
 					System.out.println(object);
 				}
 			}
-
+		} catch(Exception e) {
+			System.err.println("error: " + e.getMessage());
 		} finally {
 			// Close connecton
 			context.close();
 			System.exit(0);
 		}
-
 	}
 }
